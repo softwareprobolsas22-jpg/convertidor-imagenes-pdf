@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="es">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Convertidor de Imágenes a PDF</title>
+        <link href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.2/css/bootstrap.min.css" rel="stylesheet">
+        <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css" rel="stylesheet">
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.2/js/bootstrap.bundle.min.js"></script>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+        <link rel="stylesheet" href="source/CSS/estilos.css">
+        <script src="source/JS/script.js"></script>
+        <link rel="shortcut icon" href="assets/favicon.ico" type="image/x-icon">
+    </head>
+    <body>
+        <div class="main-container">
+            <!-- Header -->
+            <div class="header">
+                <h1><i class="fas fa-file-pdf"></i> Convertidor de Imágenes a PDF</h1>
+                <p>Convierte múltiples imágenes en un PDF ligero y optimizado con escaneo automático</p>
+            </div>
+
+            <!-- Info Alert -->
+            <div class="info-alert">
+                <i class="fas fa-info-circle"></i>
+                <strong>Información:</strong> Cada imagen ocupará una hoja completa del PDF. Las fotos capturadas se escanean automáticamente con filtro Blanco y Negro.
+            </div>
+
+            <!-- Configuración de márgenes -->
+            <div class="settings-panel">
+                <h5><i class="fas fa-cog"></i> Configuración de Márgenes</h5>
+                <div class="form-check form-switch mt-3">
+                    <input class="form-check-input" type="checkbox" id="useMargins" checked>
+                    <label class="form-check-label" for="useMargins">
+                        Usar márgenes en la hoja
+                    </label>
+                </div>
+            </div>
+
+            <!-- Upload Zone -->
+            <div class="upload-zone" id="uploadZone">
+                <div class="upload-icon">
+                    <i class="fas fa-cloud-upload-alt"></i>
+                </div>
+                <h4>Arrastra imágenes aquí o haz clic para seleccionar</h4>
+                <p class="text-muted">Soporta múltiples archivos</p>
+                <input type="file" id="fileInput" accept="image/*" multiple style="display: none;">
+            </div>
+
+            <!-- Camera Button -->
+            <div class="camera-button" id="cameraButton">
+                <i class="fas fa-camera fa-2x mb-2"></i>
+                <h5 class="mb-0">Tomar Foto con la Cámara (Escaneo Automático)</h5>
+            </div>
+
+            <!-- Preview Container -->
+            <div class="preview-container" id="previewContainer">
+                <h5><i class="fas fa-images"></i> Vista Previa (<span id="imageCount">0</span> imágenes)</h5>
+                <div class="preview-grid" id="previewGrid"></div>
+            </div>
+
+            <!-- Actions -->
+            <div class="actions-container" id="actionsContainer" style="display: none;">
+                <button class="btn btn-primary" id="generatePdfBtn">
+                    <i class="fas fa-file-pdf"></i> Generar PDF
+                </button>
+                <button class="btn btn-outline-secondary" id="clearBtn">
+                    <i class="fas fa-trash"></i> Limpiar Todo
+                </button>
+            </div>
+
+            <!-- Loading -->
+            <div class="loading" id="loading">
+                <div class="spinner-border" role="status">
+                    <span class="visually-hidden">Generando PDF...</span>
+                </div>
+                <p class="mt-3">Generando PDF, por favor espera...</p>
+            </div>
+        </div>
+
+        <!-- Modal de Cámara -->
+        <div class="modal fade" id="cameraModal" tabindex="-1" data-bs-backdrop="static" data-bs-keyboard="false">
+            <div class="modal-dialog modal-dialog-centered modal-lg">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title">
+                            <i class="fas fa-camera"></i> Capturar Foto
+                        </h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body text-center">
+                        <video id="cameraVideo" class="camera-video" autoplay playsinline></video>
+                        <canvas id="cameraCanvas" style="display: none;"></canvas>
+                    </div>
+                    <div class="modal-footer justify-content-center">
+                        <button type="button" class="btn btn-primary" id="captureBtn">
+                            <i class="fas fa-camera"></i> Capturar
+                        </button>
+                        <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">
+                            <i class="fas fa-times"></i> Cerrar
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Modal de Filtros -->
+        <div class="modal fade" id="filterModal" tabindex="-1" data-bs-backdrop="static" data-bs-keyboard="false">
+            <div class="modal-dialog modal-dialog-centered modal-xl">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title">
+                            <i class="fas fa-magic"></i> Aplicar Filtro de Escaneo
+                        </h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body">
+                        <p class="text-center text-muted">Selecciona el filtro que deseas aplicar a la imagen</p>
+                        
+                        <img id="filterPreview" class="filter-preview" alt="Vista previa">
+                        <canvas id="filterCanvas" style="display: none;"></canvas>
+                        
+                        <div class="filter-options" id="filterOptions">
+                            <div class="filter-option" data-filter="original">
+                                <i class="fas fa-image"></i>
+                                <div class="filter-name">Original</div>
+                                <div class="filter-desc">Sin cambios</div>
+                            </div>
+                            <div class="filter-option" data-filter="grayscale">
+                                <i class="fas fa-adjust"></i>
+                                <div class="filter-name">Escala de Grises</div>
+                                <div class="filter-desc">Elegante</div>
+                            </div>
+                            <div class="filter-option active" data-filter="bw">
+                                <i class="fas fa-file-alt"></i>
+                                <div class="filter-name">Blanco y Negro</div>
+                                <div class="filter-desc">Tipo escáner</div>
+                            </div>
+                            <div class="filter-option" data-filter="enhanced">
+                                <i class="fas fa-star"></i>
+                                <div class="filter-name">Mejorado</div>
+                                <div class="filter-desc">Con color</div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="modal-footer justify-content-center">
+                        <button type="button" class="btn btn-primary" id="applyFilterBtn">
+                            <i class="fas fa-check"></i> Aplicar y Agregar
+                        </button>
+                        <button type="button" class="btn btn-outline-secondary" id="retakeBtn">
+                            <i class="fas fa-redo"></i> Volver a Capturar
+                        </button>
+                        <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">
+                            <i class="fas fa-times"></i> Cancelar
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </body>
+</html>
